@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<!-- saved from url=(0031)https://formfacade.com/website/ -->
+<html lang="en" class="sr"><script type="text/javascript" src="chrome-extension://mdnleldcmiljblolnjhpnblkcekpdkpa/libs/customElements.js" class="__REQUESTLY__SCRIPT"></script><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="preconnect" href="https://fonts.googleapis.com/" crossorigin="">
+  	<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+    <link rel="shortcut icon" href="https://formfacade.com/logo.png" type="image/x-icon">
+    <link rel="icon" href="https://formfacade.com/logo.png" type="image/x-icon">
+    
+    <title>
+        
+        Formfacade - 
+        
+        Customize Google Forms UI
+    </title>
+    
+    <script type="application/ld+json">
+        {"@context":"https://schema.org","@type":"BreadcrumbList","name":"Formfacade","itemListElement":[{"@type":"ListItem","position":1,"name":"Formfacade","item":"https://formfacade.com/website/"}]}
+    </script>
+    
+    <meta name="description" content="Make Google Forms look like your website. Gain user&#39;s trust by replacing Google branding with your own branding.">
+    <meta name="keywords" content="Cheaper Typeform, Google Forms Alternative, Inquiry forms, Survey forms, Contact forms, Lead forms">
+    <link rel="canonical" href="https://formfacade.com/website/index.html">
+<script type="text/javascript" class="__REQUESTLY__SCRIPT">((namespace) => {
+  const RuleSourceKey = {
+    URL: "Url",
+    HOST: "host",
+    PATH: "path",
+  };
+
+  const RuleSourceOperator = {
+    EQUALS: "Equals",
+    CONTAINS: "Contains",
+    MATCHES: "Matches",
+    WILDCARD_MATCHES: "Wildcard_Matches",
+  };
+
+  const toRegex = (regexStr) => {
+    const matchRegExp = regexStr.match(new RegExp("^/(.+)/(|i|g|ig|gi)$"));
+
+    if (!matchRegExp) {
+      return null;
+    }
+
+    try {
+      return new RegExp(matchRegExp[1], matchRegExp[2]);
+    } catch {
+      return null;
+    }
+  };
+
+  const checkRegexMatch = (regexString, inputString) => {
+    if (!regexString.startsWith("/")) {
+      regexString = `/${regexString}/`; // Keeping enclosing slashes for regex as optional
+    }
+
+    const regex = toRegex(regexString);
+    return regex?.test(inputString);
+  };
+
+  const checkWildCardMatch = (wildCardString, inputString) => {
+    const regexString = "/^" + wildCardString.replaceAll("*", ".*") + "$/";
+    return checkRegexMatch(regexString, inputString);
+  };
+
+  const extractUrlComponent = (url, key) => {
+    const urlObj = new URL(url);
+
+    switch (key) {
+      case RuleSourceKey.URL:
+        return url;
+      case RuleSourceKey.HOST:
+        return urlObj.host;
+      case RuleSourceKey.PATH:
+        return urlObj.pathname;
+    }
+  };
+
+  window[namespace] = window[namespace] || {};
+  window[namespace].matchSourceUrl = (sourceObject, url) => {
+    const urlComponent = extractUrlComponent(url, sourceObject.key);
+    const value = sourceObject.value;
+
+    if (!urlComponent) {
+      return false;
+    }
+
+    switch (sourceObject.operator) {
+      case RuleSourceOperator.EQUALS:
+        if (value === urlComponent) {
+          return true;
+        }
+        break;
+
+      case RuleSourceOperator.CONTAINS:
+        if (urlComponent.indexOf(value) !== -1) {
+          return true;
+        }
+        break;
+
+      case RuleSourceOperator.MATCHES: {
+        return checkRegexMatch(value, urlComponent);
+      }
+
+      case RuleSourceOperator.WILDCARD_MATCHES: {
+        return checkWildCardMatch(value, urlComponent);
+      }
+    }
+
+    return false;
+  };
+})('__REQUESTLY__')</script><script type="text/javascript" class="__REQUESTLY__SCRIPT">(function (namespace) {
+  window[namespace] = window[namespace] || {};
+  window[namespace].requestRules = [];
+  window[namespace].responseRules = [];
+  let isDebugMode = false;
+
+  // Some frames are sandboxes and throw DOMException when accessing localStorage
+  try {
+    isDebugMode = window && window.localStorage && localStorage.isDebugMode;
+  } catch (e) {}
+
+  const isExtensionEnabled = () => {
+    return window[namespace].isExtensionEnabled ?? true;
+  };
+
+  const getAbsoluteUrl = (url) => {
+    const dummyLink = document.createElement("a");
+    dummyLink.href = url;
+    return dummyLink.href;
+  };
+
+  const isNonJsonObject = (obj) => {
+    return [
+      Blob,
+      ArrayBuffer,
+      Object.getPrototypeOf(Uint8Array), // TypedArray instance type
+      DataView,
+      FormData,
+      URLSearchParams,
+    ].some((nonJsonType) => obj instanceof nonJsonType);
+  };
+
+  /**
+   * @param {Object} json
+   * @param {String} path -> "a", "a.b", "a.0.b (If a is an array containing list of objects"
+   * Also copied in shared/utils.js for the sake of testing
+   */
+  const traverseJsonByPath = (jsonObject, path) => {
+    if (!path) return;
+
+    const pathParts = path.split(".");
+
+    try {
+      // Reach the last node but not the leaf node.
+      for (i = 0; i < pathParts.length - 1; i++) {
+        jsonObject = jsonObject[pathParts[i]];
+      }
+
+      return jsonObject[pathParts[pathParts.length - 1]];
+    } catch (e) {
+      /* Do nothing */
+    }
+  };
+
+  const matchesSourceFilters = ({ requestData, method }, sourceFilters) => {
+    const sourceFiltersArray = Array.isArray(sourceFilters) ? sourceFilters : [sourceFilters];
+
+    return (
+      !sourceFiltersArray.length ||
+      sourceFiltersArray.some((sourceFilter) => {
+        if (sourceFilter?.requestMethod?.length && !sourceFilter.requestMethod.includes(method)) {
+          return false;
+        }
+
+        let requestPayloadFilter = sourceFilter?.requestPayload;
+
+        if (!requestPayloadFilter) return true;
+        if (typeof requestPayloadFilter === "object" && Object.keys(requestPayloadFilter).length === 0) return true;
+
+        // We only allow request payload targeting when requestData is JSON
+        if (!requestData || typeof requestData !== "object") return false;
+        if (Object.keys(requestData).length === 0) return false;
+
+        requestPayloadFilter = requestPayloadFilter || {};
+        const targettedKey = requestPayloadFilter?.key;
+
+        // tagettedKey is the json path e.g. a.b.0.c
+        if (targettedKey) {
+          const valueInRequestData = traverseJsonByPath(requestData, targettedKey);
+          return valueInRequestData == requestPayloadFilter?.value;
+        }
+
+        return false;
+      })
+    );
+  };
+
+  const matchRuleSource = ({ url, requestData, method }, rule) => {
+    const modification = rule.pairs[0];
+    const ruleSource = modification.source;
+
+    return (
+      window[namespace].matchSourceUrl(ruleSource, url) &&
+      matchesSourceFilters({ requestData, method }, ruleSource?.filters)
+    );
+  };
+
+  const getRequestRule = (url) => {
+    if (!isExtensionEnabled()) {
+      return null;
+    }
+
+    return window[namespace].requestRules.findLast((rule) =>
+      window[namespace].matchSourceUrl(rule.pairs[0].source, url)
+    );
+  };
+
+  const getResponseRule = ({ url, requestData, method }) => {
+    if (!isExtensionEnabled()) {
+      return null;
+    }
+
+    return window[namespace].responseRules.findLast((rule) => {
+      return matchRuleSource({ url, requestData, method }, rule);
+    });
+  };
+
+  const shouldServeResponseWithoutRequest = (responseRule) => {
+    const responseModification = responseRule.pairs[0].response;
+    return responseModification.type === "static" && responseModification.serveWithoutRequest;
+  };
+
+  const getFunctionFromCode = (code) => {
+    return new Function("args", `return (${code})(args);`);
+  };
+
+  const getCustomRequestBody = (requestRule, args) => {
+    const modification = requestRule.pairs[0].request;
+    if (modification.type === "static") {
+      requestBody = modification.value;
+    } else {
+      requestBody = getFunctionFromCode(modification.value)(args);
+    }
+
+    if (typeof requestBody !== "object" || isNonJsonObject(requestBody)) {
+      return requestBody;
+    }
+
+    return JSON.stringify(requestBody);
+  };
+
+  /**
+   * @param mightBeJSONString string which might be JSON String or normal String
+   * @param doStrictCheck should return empty JSON if invalid JSON string
+   */
+  const jsonifyValidJSONString = (mightBeJSONString, doStrictCheck) => {
+    const defaultValue = doStrictCheck ? {} : mightBeJSONString;
+
+    if (typeof mightBeJSONString !== "string") {
+      return defaultValue;
+    }
+
+    try {
+      return JSON.parse(mightBeJSONString);
+    } catch (e) {
+      /* Do Nothing. Unable to parse the param value */
+    }
+
+    return defaultValue;
+  };
+
+  const isJSON = (data) => {
+    const parsedJson = jsonifyValidJSONString(data);
+    return parsedJson !== data; // if data is not a JSON, jsonifyValidJSONString() returns same value
+  };
+
+  const notifyRequestRuleApplied = (message) => {
+    window.postMessage(
+      {
+        from: "requestly",
+        type: "request_rule_applied",
+        id: message.ruleDetails.id,
+        requestDetails: message["requestDetails"],
+      },
+      window.location.href
+    );
+  };
+
+  const notifyResponseRuleApplied = (message) => {
+    window.postMessage(
+      {
+        from: "requestly",
+        type: "response_rule_applied",
+        id: message.rule.id,
+        requestDetails: message["requestDetails"],
+      },
+      window.location.href
+    );
+  };
+
+  const isPromise = (obj) =>
+    !!obj && (typeof obj === "object" || typeof obj === "function") && typeof obj.then === "function";
+
+  const isContentTypeJSON = (contentType) => !!contentType?.includes("application/json");
+
+  // Intercept XMLHttpRequest
+  const onReadyStateChange = async function () {
+    if (this.readyState === this.HEADERS_RECEIVED || this.readyState === this.DONE) {
+      if (!this.responseRule) {
+        return;
+      }
+
+      const responseModification = this.responseRule.pairs[0].response;
+      const responseType = this.responseType;
+      const contentType = this.getResponseHeader("content-type");
+
+      isDebugMode &&
+        console.log("RQ", "Inside the XHR onReadyStateChange block for url", {
+          url: this.requestURL,
+          xhr: this,
+        });
+
+      if (this.readyState === this.HEADERS_RECEIVED) {
+        // For network failures, responseStatus=0 but we still return customResponse with status=200
+        const responseStatus = parseInt(responseModification.statusCode || this.status) || 200;
+        const responseStatusText = responseModification.statusText || this.statusText;
+
+        Object.defineProperty(this, "status", {
+          get: () => responseStatus,
+        });
+
+        Object.defineProperty(this, "statusText", {
+          get: () => responseStatusText,
+        });
+      }
+
+      if (this.readyState === this.DONE) {
+        let customResponse =
+          responseModification.type === "code"
+            ? getFunctionFromCode(responseModification.value)({
+                method: this.method,
+                url: this.requestURL,
+                requestHeaders: this.requestHeaders,
+                requestData: jsonifyValidJSONString(this.requestData),
+                responseType: contentType,
+                response: this.response,
+                responseJSON: jsonifyValidJSONString(this.response, true),
+              })
+            : responseModification.value;
+
+        // Convert customResponse back to rawText
+        // response.value is String and evaluator method might return string/object
+        if (isPromise(customResponse)) {
+          customResponse = await customResponse;
+        }
+
+        const isUnsupportedResponseType = responseType && !["json", "text"].includes(responseType);
+
+        // We do not support statically modifying responses of type - blob, arraybuffer, document etc.
+        if (responseModification.type === "static" && isUnsupportedResponseType) {
+          customResponse = this.response;
+        }
+
+        if (
+          !isUnsupportedResponseType &&
+          typeof customResponse === "object" &&
+          !(customResponse instanceof Blob) &&
+          (responseType === "json" || isContentTypeJSON(contentType))
+        ) {
+          customResponse = JSON.stringify(customResponse);
+        }
+
+        Object.defineProperty(this, "response", {
+          get: function () {
+            if (responseModification.type === "static" && responseType === "json") {
+              if (typeof customResponse === "object") {
+                return customResponse;
+              }
+
+              return jsonifyValidJSONString(customResponse);
+            }
+
+            return customResponse;
+          },
+        });
+
+        if (responseType === "" || responseType === "text") {
+          Object.defineProperty(this, "responseText", {
+            get: function () {
+              return customResponse;
+            },
+          });
+        }
+
+        const requestDetails = {
+          url: this.requestURL,
+          method: this.method,
+          type: "xmlhttprequest",
+          timeStamp: Date.now(),
+        };
+
+        notifyResponseRuleApplied({
+          rule: this.responseRule,
+          requestDetails,
+        });
+      }
+    }
+  };
+
+  const resolveXHR = (xhr, responseData) => {
+    Object.defineProperty(xhr, "readyState", { writable: true });
+    const updateReadyState = (readyState) => {
+      xhr.readyState = readyState;
+      xhr.dispatchEvent(new CustomEvent("readystatechange"));
+    };
+    const dispatchProgressEvent = (type) => {
+      xhr.dispatchEvent(new ProgressEvent(type));
+    };
+
+    dispatchProgressEvent("loadstart");
+
+    // update response headers
+    const contentType = isJSON(responseData) ? "application/json" : "text/plain";
+    xhr.getResponseHeader = (key) => {
+      if (key.toLowerCase() === "content-type") {
+        return contentType;
+      }
+      return null;
+    };
+    updateReadyState(xhr.HEADERS_RECEIVED);
+
+    // mark resolved
+    updateReadyState(xhr.DONE);
+    dispatchProgressEvent("load");
+    dispatchProgressEvent("loadend");
+  };
+
+  const XHR = XMLHttpRequest;
+  XMLHttpRequest = function () {
+    const xhr = new XHR();
+    xhr.addEventListener("readystatechange", onReadyStateChange.bind(xhr), false);
+    return xhr;
+  };
+  XMLHttpRequest.prototype = XHR.prototype;
+  Object.entries(XHR).map(([key, val]) => {
+    XMLHttpRequest[key] = val;
+  });
+
+  const open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    this.method = method;
+    this.requestURL = getAbsoluteUrl(url);
+    open.apply(this, arguments);
+  };
+
+  const send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (data) {
+    this.requestData = data;
+
+    const requestRule = getRequestRule(this.requestURL);
+    if (requestRule) {
+      this.requestData = getCustomRequestBody(requestRule, {
+        method: this.method,
+        url: this.requestURL,
+        body: data,
+        bodyAsJson: jsonifyValidJSONString(data, true),
+      });
+
+      notifyRequestRuleApplied({
+        ruleDetails: requestRule,
+        requestDetails: {
+          url: this.requestURL,
+          method: this.method,
+          type: "xmlhttprequest",
+          timeStamp: Date.now(),
+        },
+      });
+    }
+
+    this.responseRule = getResponseRule({
+      url: this.requestURL,
+      requestData: jsonifyValidJSONString(this.requestData),
+      method: this.method,
+    });
+
+    if (this.responseRule && shouldServeResponseWithoutRequest(this.responseRule)) {
+      resolveXHR(this, this.responseRule.pairs[0].response.value);
+    } else {
+      send.call(this, this.requestData);
+    }
+  };
+
+  let setRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+  XMLHttpRequest.prototype.setRequestHeader = function (header, value) {
+    this.requestHeaders = this.requestHeaders || {};
+    this.requestHeaders[header] = value;
+    setRequestHeader.apply(this, arguments);
+  };
+
+  // Intercept fetch API
+  const _fetch = fetch;
+  fetch = async (...args) => {
+    const [resource, initOptions = {}] = args;
+    const getOriginalResponse = () => _fetch(...args);
+
+    let request;
+
+    if (resource instanceof Request) {
+      request = resource.clone();
+    } else {
+      request = new Request(resource.toString(), initOptions);
+    }
+
+    const url = getAbsoluteUrl(request.url);
+    const method = request.method;
+    // Request body can be sent only for request methods other than GET and HEAD.
+    const canRequestBodyBeSent = !["GET", "HEAD"].includes(method);
+
+    const requestRule = canRequestBodyBeSent && getRequestRule(url);
+    if (requestRule) {
+      const originalRequestBody = await request.text();
+      const requestBody =
+        getCustomRequestBody(requestRule, {
+          method: request.method,
+          url,
+          body: originalRequestBody,
+          bodyAsJson: jsonifyValidJSONString(originalRequestBody, true),
+        }) || {};
+
+      request = new Request(request.url, {
+        method,
+        body: requestBody,
+        headers: request.headers,
+        referrer: request.referrer,
+        referrerPolicy: request.referrerPolicy,
+        mode: request.mode,
+        credentials: request.credentials,
+        cache: request.cache,
+        redirect: request.redirect,
+        integrity: request.integrity,
+      });
+
+      notifyRequestRuleApplied({
+        ruleDetails: requestRule,
+        requestDetails: {
+          url,
+          method: request.method,
+          type: "fetch",
+          timeStamp: Date.now(),
+        },
+      });
+    }
+
+    let requestData;
+    if (canRequestBodyBeSent) {
+      requestData = jsonifyValidJSONString(await request.clone().text()); // cloning because the request will be used to make API call
+    }
+
+    const responseRule = getResponseRule({ url, requestData, method });
+    let responseHeaders;
+    let fetchedResponse;
+
+    if (responseRule && shouldServeResponseWithoutRequest(responseRule)) {
+      const contentType = isJSON(responseRule.pairs[0].response.value) ? "application/json" : "text/plain";
+      responseHeaders = new Headers({ "content-type": contentType });
+    } else {
+      try {
+        if (requestRule) {
+          // use modified request to fetch response
+          fetchedResponse = await _fetch(request);
+        } else {
+          fetchedResponse = await getOriginalResponse();
+        }
+
+        if (!responseRule) {
+          return fetchedResponse;
+        }
+
+        responseHeaders = fetchedResponse?.headers;
+      } catch (error) {
+        if (!responseRule) {
+          return Promise.reject(error);
+        }
+      }
+    }
+
+    isDebugMode &&
+      console.log("RQ", "Inside the fetch block for url", {
+        url,
+        resource,
+        initOptions,
+        fetchedResponse,
+      });
+
+    let customResponse;
+    const responseModification = responseRule.pairs[0].response;
+
+    if (responseModification.type === "code") {
+      const requestHeaders =
+        request.headers &&
+        Array.from(request.headers).reduce((obj, [key, val]) => {
+          obj[key] = val;
+          return obj;
+        }, {});
+
+      let evaluatorArgs = {
+        method,
+        url,
+        requestHeaders,
+        requestData,
+      };
+
+      if (fetchedResponse) {
+        const fetchedResponseData = await fetchedResponse.text();
+        const responseType = fetchedResponse.headers.get("content-type");
+        const fetchedResponseDataAsJson = jsonifyValidJSONString(fetchedResponseData, true);
+
+        evaluatorArgs = {
+          ...evaluatorArgs,
+          responseType,
+          response: fetchedResponseData,
+          responseJSON: fetchedResponseDataAsJson,
+        };
+      }
+
+      customResponse = getFunctionFromCode(responseModification.value)(evaluatorArgs);
+
+      // evaluator might return us Object but response.value is string
+      // So make the response consistent by converting to JSON String and then create the Response object
+      if (isPromise(customResponse)) {
+        customResponse = await customResponse;
+      }
+
+      if (typeof customResponse === "object" && isContentTypeJSON(evaluatorArgs?.responseType)) {
+        customResponse = JSON.stringify(customResponse);
+      }
+    } else {
+      customResponse = responseModification.value;
+    }
+
+    const requestDetails = {
+      url,
+      method,
+      type: "fetch",
+      timeStamp: Date.now(),
+    };
+
+    notifyResponseRuleApplied({
+      rule: responseRule,
+      requestDetails,
+    });
+
+    // For network failures, fetchedResponse is undefined but we still return customResponse with status=200
+    const finalStatusCode = parseInt(responseModification.statusCode || fetchedResponse?.status) || 200;
+    const requiresNullResponseBody = [204, 205, 304].includes(finalStatusCode);
+
+    return new Response(requiresNullResponseBody ? null : new Blob([customResponse]), {
+      status: finalStatusCode,
+      statusText: responseModification.statusText || fetchedResponse?.statusText,
+      headers: responseHeaders,
+    });
+  };
+})('__REQUESTLY__')</script></head>
+
+<body style="height: 100%;">
+    
+    
+    <style>
+    .hero.dark .text-large, .hero.dark p{ color:#fff; }
+</style>
+<link rel="stylesheet" href="./Formfacade - Customize Google Forms UI_files/plugins.css">
+<link rel="stylesheet" href="./Formfacade - Customize Google Forms UI_files/style.css">
+
+    <link rel="stylesheet" href="./Formfacade - Customize Google Forms UI_files/website.content.css" as="style" onload="this.onload=null;this.rel=&#39;stylesheet&#39;;">
+
+    <link rel="stylesheet" href="./Formfacade - Customize Google Forms UI_files/ionicons.min.css" as="style" onload="this.onload=null;this.rel=&#39;stylesheet&#39;;">
+
+    <link rel="stylesheet" href="./Formfacade - Customize Google Forms UI_files/icon" as="style" onload="this.onload=null;this.rel=&#39;stylesheet&#39;;">
+
+    <link rel="stylesheet" href="./Formfacade - Customize Google Forms UI_files/css" as="style" onload="this.onload=null;this.rel=&#39;stylesheet&#39;;">
+
+<script src="./Formfacade - Customize Google Forms UI_files/lazysizes.min.js.download" async=""></script>
+
+    <nav id="navbar-fixed-top" class="navbar navbar-dark navbar-expand-lg header-fullscreen navbar-transparent fixed-top">
+        <div class="container-fluid">
+            <div class="navbar-brand">
+                <a href="https://formfacade.com/enhance/" class="wc-logo">
+                
+                    <img src="./Formfacade - Customize Google Forms UI_files/login_logo.svg">
+                
+                </a>
+                <a href="https://formfacade.com/enhance/" class="navbar-brand-category">Formfacade</a>
+                <a href="https://formfacade.com/website/" class="navbar-brand-product">Customize UI</a>
+            </div>
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#navbar-scroll" aria-expanded="false">
+                    <i class="icon ion-ios-menu"></i>
+                </button>
+            </div>
+            <div id="navbar-scroll" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="https://formfacade.com/website/">
+                          Home
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://formfacade.com/website/google-forms-vs-typeform.html">
+                          Comparison
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://formfacade.com/website/pricing.html">
+                          Pricing
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://formfacade.com/website/resources.html">
+                          FAQ
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link " href="https://formfacade.com/website/support.html">
+                          Support
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        
+                        <a class="btn btn-skin-border btn-radius btn-xs d-lg-block" href="https://formfacade.com/login/website.html">
+                            Login
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <!--/.nav-collapse -->
+        </div>
+        <!--/.container -->
+    </nav>
+
+    <script>
+    function changeCurrency(element){
+        var queryParams = new URLSearchParams(location.search)
+        queryParams.set('currency', element.value.toLowerCase());
+        queryParams = ('?' + new URLSearchParams(queryParams).toString())
+        location.search = queryParams;
+    }
+</script>
+
+    <style>
+    @media (min-width: 992px) {
+        .btnrow .btnleft{ text-align:right; }
+        .btnrow .btnright{ text-align:left; }
+    }
+</style>
+    <section id="home" class="hero dark fullscreen-hero parallax-me" style="position: relative; background: transparent; overflow: hidden; z-index: 0;"><div class="parallax-inner" style="position: absolute; background-image: url(&quot;&quot;); background-position: center center; background-repeat: no-repeat; background-size: cover; width: 1903px; height: 1385px; transform: translate3d(0px, -231px, 0px); transition: transform 100ms ease 0s; z-index: -1;"></div>
+        <div class="hero-overlay hero-gradient"></div>
+        <div class="hero-parallax">
+            <div class="hero-inner">
+                <div class="hero-content">
+                    <div class="container text-center">
+                        <div class="row pt-70 pb-4">
+                            <div class="col-lg-10 mr-auto ml-auto pt-70">
+                                <h1 class="type-wrap text-large">
+                                  Customize Google Forms UI
+                                </h1>
+                            </div>
+                        </div>
+                        <div class="btnrow row">
+                            <div class="btnleft col-lg-6 col-xs-12 pb-4">
+                                <a href="https://formfacade.com/browse-templates" class="btn btn-lg btn-radius btn-skin">
+                                  Browse Templates
+                                </a>
+                            </div>
+                            <div class="btnright col-lg-6 col-xs-12 pb-4">
+                                <a href="https://gsuite.google.com/marketplace/app/formfacade/743872305260" class="btn btn-outline-light btn-radius btn-lg" target="_blank">
+                                  Install Addon
+                                </a>
+                            </div>
+                        </div>
+                        <style>
+                          #banner img{ 
+                            box-shadow: 2px 2px 8px 0px rgba(0,0,0,0.75); 
+                            border-bottom: 1px solid rgba(25, 18, 51, 0.05);
+                          }
+                        </style>
+                        <div id="banner" class="row d-flex flex pt-4">
+                            <div class="col-lg-6 col-md-10 ml-auto mr-auto">
+                                <div class="row grid-border">
+                                    <div class="col-6">
+                                        <img src="./Formfacade - Customize Google Forms UI_files/3.before.png" data-src="/banner/3.before.png" class="img-fluid lazyloaded" alt="Google Forms">
+                                    </div>
+                                    <div class="mouse-down" style="bottom:8rem;">
+                                      <a class="anchor-scroll" href="https://formfacade.com/website/#intro"><i class="icon ion-ios-arrow-forward"></i></a>
+                                    </div>
+                                    <div class="col-6">
+                                        <img src="./Formfacade - Customize Google Forms UI_files/3.after.png" data-src="/banner/3.after.png" class="img-fluid lazyloaded" alt="Formfacade">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--container-->
+                </div>
+                <!--hero content-->
+            </div>
+            <!--hero inner-->
+        </div>
+    </section>
+
+    
+<section itemscope="" itemtype="https://schema.org/Product">
+
+  
+  <div class="container pt-4 pb-30 v2">
+    <div class="row ">
+        <div class="col-lg-8 text-center ml-auto mr-auto">
+            <div class="section-title">
+              
+                <h1>Features</h1>
+              
+              <p class="subtitle" itemprop="keywords">
+                Customize Google Forms
+              </p>
+            </div>
+        </div>
+    </div>
+    <div class="row show-desktop">
+        <div class="col-lg-4 col-xs-12">
+          <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+          
+            <a class="nav-link active" id="v-pills-00-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-00" role="tab">
+              Design a professional looking form by selecting your preferred layout, brand colors, fonts and language
+            </a>
+          
+            <a class="nav-link " id="v-pills-01-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-01" role="tab">
+              Format your questions by adding line breaks, rich text descriptions and meaningful placeholder text
+            </a>
+          
+            <a class="nav-link " id="v-pills-02-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-02" role="tab">
+              Make your forms more functional by adding hidden fields and formulas to dynamically calculate answers
+            </a>
+          
+            <a class="nav-link " id="v-pills-03-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-03" role="tab">
+              Add custom css to further customize the form and style individual form elements as per your needs
+            </a>
+          
+          </div>
+        </div>
+        <div class="col-lg-8 col-xs-12 tab-content v-pills-tabContent">
+        
+          <div class="tab-pane fade show active" id="v-pills-00" role="tabpanel">
+            <img src="./Formfacade - Customize Google Forms UI_files/customize-form-layout-colors-fonts-language.png" data-src="/banner/website/customize-form-layout-colors-fonts-language.png" loading="lazy" class="img-fluid rounded lazyloaded" alt="Design a professional looking form by selecting your preferred layout, brand colors, fonts and language">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-01" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/format-questions-add-linebreaks-rich-text-descriptions-placeholder-text.png" loading="lazy" class="lazyload img-fluid rounded" alt="Format your questions by adding line breaks, rich text descriptions and meaningful placeholder text">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-02" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/make-forms-functional-with-hidden-fields-and-calculations.png" loading="lazy" class="lazyload img-fluid rounded" alt="Make your forms more functional by adding hidden fields and formulas to dynamically calculate answers">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-03" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/add-cutom-css-to-style-form.png" loading="lazy" class="lazyload img-fluid rounded" alt="Add custom css to further customize the form and style individual form elements as per your needs">
+          </div>
+        
+        </div>
+    </div>
+
+        <div class="row show-mobile">
+          <div class="col-lg-12 col-xs-12">
+            <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-00-tab" itemprop="description">
+                  Design a professional looking form by selecting your preferred layout, brand colors, fonts and language
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/customize-form-layout-colors-fonts-language.png" loading="lazy" class="lazyload img-fluid rounded" alt="Design a professional looking form by selecting your preferred layout, brand colors, fonts and language" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-01-tab" itemprop="description">
+                  Format your questions by adding line breaks, rich text descriptions and meaningful placeholder text
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/format-questions-add-linebreaks-rich-text-descriptions-placeholder-text.png" loading="lazy" class="lazyload img-fluid rounded" alt="Format your questions by adding line breaks, rich text descriptions and meaningful placeholder text" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-02-tab" itemprop="description">
+                  Make your forms more functional by adding hidden fields and formulas to dynamically calculate answers
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/make-forms-functional-with-hidden-fields-and-calculations.png" loading="lazy" class="lazyload img-fluid rounded" alt="Make your forms more functional by adding hidden fields and formulas to dynamically calculate answers" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-03-tab" itemprop="description">
+                  Add custom css to further customize the form and style individual form elements as per your needs
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/add-cutom-css-to-style-form.png" loading="lazy" class="lazyload img-fluid rounded" alt="Add custom css to further customize the form and style individual form elements as per your needs" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+            </div>
+           
+          </div>
+          
+      </div>
+    
+  </div>
+  
+
+  <div class="bg">
+  <div class="container pt-4 pb-30 v2">
+    <div class="row ">
+        <div class="col-lg-8 text-center ml-auto mr-auto">
+            <div class="section-title">
+              
+              <p class="subtitle" itemprop="keywords">
+                Thank you pages
+              </p>
+            </div>
+        </div>
+    </div>
+    <div class="row show-desktop">
+        <div class="col-lg-4 col-xs-12">
+          <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+          
+            <a class="nav-link active" id="v-pills-10-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-10" role="tab">
+              Personalize the thank you message by including form responses and format it using markdown language
+            </a>
+          
+            <a class="nav-link " id="v-pills-11-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-11" role="tab">
+              Redirect users to a webpage on submit or use conditional logic based on form responses to show different pages
+            </a>
+          
+            <a class="nav-link " id="v-pills-12-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-12" role="tab">
+              Pass form responses via url parameters to another form or an external webpage on form submit
+            </a>
+          
+            <a class="nav-link " id="v-pills-13-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-13" role="tab">
+              Show a customized thank you message or redirect to a webpage for each ending in forms with branching logic
+            </a>
+          
+          </div>
+        </div>
+        <div class="col-lg-8 col-xs-12 tab-content v-pills-tabContent">
+        
+          <div class="tab-pane fade show active" id="v-pills-10" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/personalize-thank-you-messages.png" loading="lazy" class="lazyload img-fluid rounded" alt="Personalize the thank you message by including form responses and format it using markdown language">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-11" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/redirect-users-on-submit.png" loading="lazy" class="lazyload img-fluid rounded" alt="Redirect users to a webpage on submit or use conditional logic based on form responses to show different pages">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-12" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/pass-values-via-url-parameters-to-external-webpage-or-form-on-submit.png" loading="lazy" class="lazyload img-fluid rounded" alt="Pass form responses via url parameters to another form or an external webpage on form submit">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-13" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/customize-submit-for-each-ending-in-forms-with-branching-logic.png" loading="lazy" class="lazyload img-fluid rounded" alt="Show a customized thank you message or redirect to a webpage for each ending in forms with branching logic">
+          </div>
+        
+        </div>
+    </div>
+
+        <div class="row show-mobile">
+          <div class="col-lg-12 col-xs-12">
+            <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-10-tab" itemprop="description">
+                  Personalize the thank you message by including form responses and format it using markdown language
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/personalize-thank-you-messages.png" loading="lazy" class="lazyload img-fluid rounded" alt="Personalize the thank you message by including form responses and format it using markdown language" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-11-tab" itemprop="description">
+                  Redirect users to a webpage on submit or use conditional logic based on form responses to show different pages
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/redirect-users-on-submit.png" loading="lazy" class="lazyload img-fluid rounded" alt="Redirect users to a webpage on submit or use conditional logic based on form responses to show different pages" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-12-tab" itemprop="description">
+                  Pass form responses via url parameters to another form or an external webpage on form submit
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/pass-values-via-url-parameters-to-external-webpage-or-form-on-submit.png" loading="lazy" class="lazyload img-fluid rounded" alt="Pass form responses via url parameters to another form or an external webpage on form submit" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-13-tab" itemprop="description">
+                  Show a customized thank you message or redirect to a webpage for each ending in forms with branching logic
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/customize-submit-for-each-ending-in-forms-with-branching-logic.png" loading="lazy" class="lazyload img-fluid rounded" alt="Show a customized thank you message or redirect to a webpage for each ending in forms with branching logic" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+            </div>
+           
+          </div>
+          
+      </div>
+    
+  </div>
+  </div>
+
+  
+  <div class="container pt-4 pb-30 v2">
+    <div class="row ">
+        <div class="col-lg-8 text-center ml-auto mr-auto">
+            <div class="section-title">
+              
+              <p class="subtitle" itemprop="keywords">
+                Collect responses
+              </p>
+            </div>
+        </div>
+    </div>
+    <div class="row show-desktop">
+        <div class="col-lg-4 col-xs-12">
+          <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+          
+            <a class="nav-link active" id="v-pills-20-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-20" role="tab">
+              Share your form link on social media, email or WhatsApp to collect responses from your users
+            </a>
+          
+            <a class="nav-link " id="v-pills-21-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-21" role="tab">
+              Embed the form on your site and impress your visitors with a branded form that matches your theme
+            </a>
+          
+            <a class="nav-link " id="v-pills-22-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-22" role="tab">
+              Display the QR code online or print it on flyers and allow users to easily access the form on their mobile
+            </a>
+          
+            <a class="nav-link " id="v-pills-23-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-23" role="tab">
+              Generate a unique prefill link or pass values via url parameters to prefill answers in your form
+            </a>
+          
+          </div>
+        </div>
+        <div class="col-lg-8 col-xs-12 tab-content v-pills-tabContent">
+        
+          <div class="tab-pane fade show active" id="v-pills-20" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/share-form-link-social-media-email-to-collect-responses.png" loading="lazy" class="lazyload img-fluid rounded" alt="Share your form link on social media, email or WhatsApp to collect responses from your users">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-21" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/embed-form-in-webpage-to-collect-responses.png" loading="lazy" class="lazyload img-fluid rounded" alt="Embed the form on your site and impress your visitors with a branded form that matches your theme">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-22" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/display-qr-code-to-collect-responses.png" loading="lazy" class="lazyload img-fluid rounded" alt="Display the QR code online or print it on flyers and allow users to easily access the form on their mobile">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-23" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/prefill-answers-via-ural-parameters-or-unique-prefill-links.png" loading="lazy" class="lazyload img-fluid rounded" alt="Generate a unique prefill link or pass values via url parameters to prefill answers in your form">
+          </div>
+        
+        </div>
+    </div>
+
+        <div class="row show-mobile">
+          <div class="col-lg-12 col-xs-12">
+            <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-20-tab" itemprop="description">
+                  Share your form link on social media, email or WhatsApp to collect responses from your users
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/share-form-link-social-media-email-to-collect-responses.png" loading="lazy" class="lazyload img-fluid rounded" alt="Share your form link on social media, email or WhatsApp to collect responses from your users" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-21-tab" itemprop="description">
+                  Embed the form on your site and impress your visitors with a branded form that matches your theme
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/embed-form-in-webpage-to-collect-responses.png" loading="lazy" class="lazyload img-fluid rounded" alt="Embed the form on your site and impress your visitors with a branded form that matches your theme" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-22-tab" itemprop="description">
+                  Display the QR code online or print it on flyers and allow users to easily access the form on their mobile
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/display-qr-code-to-collect-responses.png" loading="lazy" class="lazyload img-fluid rounded" alt="Display the QR code online or print it on flyers and allow users to easily access the form on their mobile" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-23-tab" itemprop="description">
+                  Generate a unique prefill link or pass values via url parameters to prefill answers in your form
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/prefill-answers-via-ural-parameters-or-unique-prefill-links.png" loading="lazy" class="lazyload img-fluid rounded" alt="Generate a unique prefill link or pass values via url parameters to prefill answers in your form" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+            </div>
+           
+          </div>
+          
+      </div>
+    
+  </div>
+  
+
+  <div class="bg">
+  <div class="container pt-4 pb-30 v2">
+    <div class="row ">
+        <div class="col-lg-8 text-center ml-auto mr-auto">
+            <div class="section-title">
+              
+              <p class="subtitle" itemprop="keywords">
+                Manage responses
+              </p>
+            </div>
+        </div>
+    </div>
+    <div class="row show-desktop">
+        <div class="col-lg-4 col-xs-12">
+          <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+          
+            <a class="nav-link active" id="v-pills-30-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-30" role="tab">
+              View forms responses by question, person, or summary of the form responses in Google Forms
+            </a>
+          
+            <a class="nav-link " id="v-pills-31-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-31" role="tab">
+              Sync responses to Google Sheets to analyze the data or integrate with other apps using Zapier or Apps script
+            </a>
+          
+            <a class="nav-link " id="v-pills-32-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-32" role="tab">
+              Manage form responses using our kanban board and collaborate with your team easily in real time
+            </a>
+          
+            <a class="nav-link " id="v-pills-33-tab" data-toggle="pill" href="https://formfacade.com/website/#v-pills-33" role="tab">
+              Keep track of your form activity with the daily notification email that includes a summary of your responses
+            </a>
+          
+          </div>
+        </div>
+        <div class="col-lg-8 col-xs-12 tab-content v-pills-tabContent">
+        
+          <div class="tab-pane fade show active" id="v-pills-30" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/view-form-responses-in-google-forms.png" loading="lazy" class="lazyload img-fluid rounded" alt="View forms responses by question, person, or summary of the form responses in Google Forms">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-31" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/sync-responses-to-google-sheets-analyze-data.png" loading="lazy" class="lazyload img-fluid rounded" alt="Sync responses to Google Sheets to analyze the data or integrate with other apps using Zapier or Apps script">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-32" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/manage-form-responses-using-kanban-board.png" loading="lazy" class="lazyload img-fluid rounded" alt="Manage form responses using our kanban board and collaborate with your team easily in real time">
+          </div>
+        
+          <div class="tab-pane fade show " id="v-pills-33" role="tabpanel">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/receive-daily-summary-notification-email.png" loading="lazy" class="lazyload img-fluid rounded" alt="Keep track of your form activity with the daily notification email that includes a summary of your responses">
+          </div>
+        
+        </div>
+    </div>
+
+        <div class="row show-mobile">
+          <div class="col-lg-12 col-xs-12">
+            <div class="nav flex-column nav-pills v-pills-tab" role="tablist" aria-orientation="vertical">
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-30-tab" itemprop="description">
+                  View forms responses by question, person, or summary of the form responses in Google Forms
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/view-form-responses-in-google-forms.png" loading="lazy" class="lazyload img-fluid rounded" alt="View forms responses by question, person, or summary of the form responses in Google Forms" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-31-tab" itemprop="description">
+                  Sync responses to Google Sheets to analyze the data or integrate with other apps using Zapier or Apps script
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/sync-responses-to-google-sheets-analyze-data.png" loading="lazy" class="lazyload img-fluid rounded" alt="Sync responses to Google Sheets to analyze the data or integrate with other apps using Zapier or Apps script" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-32-tab" itemprop="description">
+                  Manage form responses using our kanban board and collaborate with your team easily in real time
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/manage-form-responses-using-kanban-board.png" loading="lazy" class="lazyload img-fluid rounded" alt="Manage form responses using our kanban board and collaborate with your team easily in real time" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+              <div class="nav-mob-container">
+                <div class="nav-content" id="v-pills-33-tab" itemprop="description">
+                  Keep track of your form activity with the daily notification email that includes a summary of your responses
+                </div>
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MzAgNTAwIiB3aWR0aD0iNzMwIiBoZWlnaHQ9IjUwMCI+CgkJCTxyZWN0IHdpZHRoPSI3MzAiIGhlaWdodD0iNTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/banner/website/receive-daily-summary-notification-email.png" loading="lazy" class="lazyload img-fluid rounded" alt="Keep track of your form activity with the daily notification email that includes a summary of your responses" itemprop="image">
+                <hr class="hr"> 
+              </div>
+            
+            </div>
+           
+          </div>
+          
+      </div>
+    
+  </div>
+  </div>
+
+</section>
+
+    
+
+    
+        <div class="pt-70 pb-70 bg-gradient pos-relative">
+            <div class="container pos-relative z-index-10">
+                <!--Section title-->
+                <div class="row clearfix">
+                    <div class="col-lg-8 mr-auto ml-auto text-center">
+                        <div class="section-title light">
+                            <h2>Customers love us</h2>
+                        </div>
+                    </div>
+                </div>
+                <!--Section Title End-->
+                <style>
+                    .testimonial-card .img-fluid{ max-width:120px; }
+                    .testimonial-card a{ color:#fff; }
+                </style>
+                <div class="swiper-container swiper-testimonials swiper-container-horizontal" itemscope="" itemtype="https://schema.org/Product">
+                    <div class="swiper-wrapper" style="transform: translate3d(-1110px, 0px, 0px); transition-duration: 0ms;">
+                    
+                        <div class="swiper-slide swiper-slide-prev" style="width: 1110px;">
+                            <div class="testimonial-card" itemprop="review" itemscope="" itemtype="https://schema.org/Review">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-2 col-md-3 my-3 col-sm-12 ml-auto text-center">
+                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CgkJCTxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/customers/quotes/karen-launchbaugh.jpg" fetchpriority="low" class="lazyload img-fluid ml-auto mr-auto rounded-circle">
+                                    </div>
+                                    <div class="col-lg-8 col-md-7 col-sm-12 text-md-left text-lg-left text-center mr-auto">
+                                        <p class="lead" itemprop="reviewBody">
+                                            I really like using google forms. But, I needed something that looked a bit more professional and I stumbled across formfacade.  It works great!  Easy to use and include on my Wordpress site. It was also easy to download the information submitted through the form. This is absolutely one of the best apps I have ever used in terms of service and support.
+                                        </p>
+                                        <h6>
+                                            <a href="https://formfacade.com/website/#!" target="_blank" itemprop="author">
+                                                
+                                                    Karen Launchbaugh, University of Idaho
+                                                
+                                            </a>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <div class="swiper-slide swiper-slide-active" style="width: 1110px;">
+                            <div class="testimonial-card" itemprop="review" itemscope="" itemtype="https://schema.org/Review">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-2 col-md-3 my-3 col-sm-12 ml-auto text-center">
+                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CgkJCTxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/customers/quotes/dorothy-jem-chen.jpg" fetchpriority="low" class="lazyload img-fluid ml-auto mr-auto rounded-circle">
+                                    </div>
+                                    <div class="col-lg-8 col-md-7 col-sm-12 text-md-left text-lg-left text-center mr-auto">
+                                        <p class="lead" itemprop="reviewBody">
+                                            Hands down one of the best add ons in Google Forms especially if you feel so limited in Google Forms. It has features like calculations - which is perfect for automating your processes. It also makes your form look minimalistic compared to the bulky design of Google Forms.
+                                        </p>
+                                        <h6>
+                                            <a href="https://formfacade.com/website/#!" target="_blank" itemprop="author">
+                                                
+                                                    Dorothy Jem Chen
+                                                
+                                            </a>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <div class="swiper-slide swiper-slide-next" style="width: 1110px;">
+                            <div class="testimonial-card" itemprop="review" itemscope="" itemtype="https://schema.org/Review">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-2 col-md-3 my-3 col-sm-12 ml-auto text-center">
+                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CgkJCTxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/customers/quotes/stella-niagara.jpg" fetchpriority="low" class="lazyload img-fluid ml-auto mr-auto rounded-circle">
+                                    </div>
+                                    <div class="col-lg-8 col-md-7 col-sm-12 text-md-left text-lg-left text-center mr-auto">
+                                        <p class="lead" itemprop="reviewBody">
+                                            This is an amazing add-on. It provides another level of control of the look and functionality of your Google Form. The product is well thought out and easy to use. The support is great! Fast answers that went above and beyond.
+                                        </p>
+                                        <h6>
+                                            <a href="https://formfacade.com/website/#!" target="_blank" itemprop="author">
+                                                
+                                                    Michael Simpson, Stella Niagara Education Park
+                                                
+                                            </a>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <div class="swiper-slide" style="width: 1110px;">
+                            <div class="testimonial-card" itemprop="review" itemscope="" itemtype="https://schema.org/Review">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-2 col-md-3 my-3 col-sm-12 ml-auto text-center">
+                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CgkJCTxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/customers/quotes/aimee-cerka.jpg" fetchpriority="low" class="lazyload img-fluid ml-auto mr-auto rounded-circle">
+                                    </div>
+                                    <div class="col-lg-8 col-md-7 col-sm-12 text-md-left text-lg-left text-center mr-auto">
+                                        <p class="lead" itemprop="reviewBody">
+                                            An extra 5 minutes of work to incorporate my Google Forms into my website and present a more unified brand look, that is extremely valuable.
+                                        </p>
+                                        <h6>
+                                            <a href="https://formfacade.com/website/#!" target="_blank" itemprop="author">
+                                                
+                                                    Aimee Cerka, aimeecerka.com
+                                                
+                                            </a>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <div class="swiper-slide" style="width: 1110px;">
+                            <div class="testimonial-card" itemprop="review" itemscope="" itemtype="https://schema.org/Review">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-2 col-md-3 my-3 col-sm-12 ml-auto text-center">
+                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CgkJCTxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/customers/quotes/alex-bosch.png" fetchpriority="low" class="lazyload img-fluid ml-auto mr-auto rounded-circle">
+                                    </div>
+                                    <div class="col-lg-8 col-md-7 col-sm-12 text-md-left text-lg-left text-center mr-auto">
+                                        <p class="lead" itemprop="reviewBody">
+                                            I really enjoy using Google Form as a tool to do my job, but appearance is not its best part. Formfacade helped me embed it in my website and make it look more professional.
+                                        </p>
+                                        <h6>
+                                            <a href="https://formfacade.com/website/#!" target="_blank" itemprop="author">
+                                                
+                                                    Alexandre Bosch Puig-Alsina, DAGGAS
+                                                
+                                            </a>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                        <div class="swiper-slide" style="width: 1110px;">
+                            <div class="testimonial-card" itemprop="review" itemscope="" itemtype="https://schema.org/Review">
+                                <div class="row align-items-center">
+                                    <div class="col-lg-2 col-md-3 my-3 col-sm-12 ml-auto text-center">
+                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CgkJCTxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" data-src="/customers/quotes/comotaorole-logo.png" fetchpriority="low" class="lazyload img-fluid ml-auto mr-auto rounded-circle">
+                                    </div>
+                                    <div class="col-lg-8 col-md-7 col-sm-12 text-md-left text-lg-left text-center mr-auto">
+                                        <p class="lead" itemprop="reviewBody">
+                                            We were using Google Forms for almost 2 years, but when we found Formfacade we immediately switched to Formfacade for its aesthetics and possibility of form customization in greater detail. It enhances the customers’ perception of your website and your brand.
+                                        </p>
+                                        <h6>
+                                            <a href="https://formfacade.com/website/#!" target="_blank" itemprop="author">
+                                                
+                                                    Caio Cézar, comotaorole.com
+                                                
+                                            </a>
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    
+                    </div>
+                    <!--swiper-wrapper-->
+                    <!-- Add Arrows -->
+                    <div class="swiper-button-next" tabindex="0" role="button" aria-label="Next slide" aria-disabled="false"></div>
+                    <div class="swiper-button-prev" tabindex="0" role="button" aria-label="Previous slide" aria-disabled="false"></div>
+                <span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
+            </div>
+            <!--Shape bottom-->
+            <div class="shape-bottom"></div>
+        </div>
+    
+
+    
+<style>
+    .customerlist{}
+    .customerlist .row{ min-height:100px; margin-bottom:20px; }
+    .customerlist .row .col-3{ display:flex; align-items:center; justify-content:center; }
+    .customerlist .row .col-3 img{ width:120px; }
+</style>
+<hr class="my-0">
+<section id="customers">
+    <div class="container text-center">
+        
+            <h2> From startups to corporates. <br><span class="extra-bold"> </span>2500+ companies trust us.  </h2>
+        
+        <img class="mt-30" src="https://formfacade.com/website/">
+    </div>
+
+    <div class="container customerlist">
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="A Place for Mom&lt;br/&gt;(Healthcare)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="A Place for Mom" data-src="/banner/logo/a-place-for-mom.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="ACMP Texas&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="ACMP Texas" data-src="/banner/logo/acmp-texas.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Aliança Empreendedora&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Aliança Empreendedora" data-src="/banner/logo/alianca-empreendedora.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="All Star Code&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="All Star Code" data-src="/banner/logo/all-star-code.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Bard College&lt;br/&gt;(Colleges)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Bard College" data-src="/banner/logo/bard-college.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Birmingham Equestrian Center&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Birmingham Equestrian Center" data-src="/banner/logo/birmingham-equestrian-center.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Black Lunch Table&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Black Lunch Table" data-src="/banner/logo/black-lunch-table.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Capitanes CDMX&lt;br/&gt;(Sports)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Capitanes CDMX" data-src="/banner/logo/capitanes-cdmx.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Cars24&lt;br/&gt;(Automotive)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Cars24" data-src="/banner/logo/cars24.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Charity Week&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Charity Week" data-src="/banner/logo/charity-week.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Chulalongkorn University&lt;br/&gt;(Schools)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Chulalongkorn University" data-src="/banner/logo/chulalongkorn-university.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Creionetica&lt;br/&gt;(Media)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Creionetica" data-src="/banner/logo/creionetica.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Crumbl Cookies&lt;br/&gt;(Food)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Crumbl Cookies" data-src="/banner/logo/crumbl-cookies.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Embassy of Dominican Republic in Japan&lt;br/&gt;(Asia Pacific)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Embassy of Dominican Republic in Japan" data-src="/banner/logo/embassy-of-dominican-republic-in-japan.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Financial Services Innovators&lt;br/&gt;(Financial Services)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Financial Services Innovators" data-src="/banner/logo/financial-services-innovators.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Flowers TV&lt;br/&gt;(Media)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Flowers TV" data-src="/banner/logo/flowers-tv.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Gimmicks LLC&lt;br/&gt;(Media)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Gimmicks LLC" data-src="/banner/logo/gimmicks-llc.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Grace Chapel Church of Christ&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Grace Chapel Church of Christ" data-src="/banner/logo/grace-chapel-church-of-christ.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Groupe Savoie Inc&lt;br/&gt;(Manufacturing)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Groupe Savoie Inc" data-src="/banner/logo/groupe-savoie-inc.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Hawke&#39;s Brewing Co&lt;br/&gt;(Beverage)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Hawke&#39;s Brewing Co" data-src="/banner/logo/hawkes-brewing-co.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="i-APS&lt;br/&gt;(Technology)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="i-APS" data-src="/banner/logo/i-aps.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="LANGE VON MÜNCHHAUSEN&lt;br/&gt;(Automotive)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="LANGE VON MÜNCHHAUSEN" data-src="/banner/logo/lange-von-munchhausen.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Life Alive Cafe&lt;br/&gt;(Food)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Life Alive Cafe" data-src="/banner/logo/life-alive-cafe.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Magnet Schools of America&lt;br/&gt;(School Districts)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Magnet Schools of America" data-src="/banner/logo/magnet-schools-of-america.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Matto Espresso&lt;br/&gt;(Beverage)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Matto Espresso" data-src="/banner/logo/matto-espresso.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="MirtecUSA&lt;br/&gt;(Electronics)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="MirtecUSA" data-src="/banner/logo/mirtecusa.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Okinawa International School&lt;br/&gt;(Schools)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Okinawa International School" data-src="/banner/logo/okinawa-international-school.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Onesea - Connecting Lives to the Ocean&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Onesea - Connecting Lives to the Ocean" data-src="/banner/logo/onesea-connecting-lives-to-the-ocean.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Osapiens&lt;br/&gt;(Technology)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Osapiens" data-src="/banner/logo/osapiens.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Roberta&#39;s Pizza&lt;br/&gt;(Catering)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Roberta&#39;s Pizza" data-src="/banner/logo/robertas-pizza.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Rover Inc&lt;br/&gt;(Technology)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Rover Inc" data-src="/banner/logo/rover-inc.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Royal Commission Yanbu Colleges &amp; Institutes&lt;br/&gt;(Colleges)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Royal Commission Yanbu Colleges &amp; Institutes" data-src="/banner/logo/royal-commission-yanbu-colleges-institutes.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Seattle Chinese Church&lt;br/&gt;(Institutes)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Seattle Chinese Church" data-src="/banner/logo/seattle-chinese-church.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Segalas Alimentos&lt;br/&gt;(Food)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Segalas Alimentos" data-src="/banner/logo/segalas-alimentos.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Sun Spark Group&lt;br/&gt;(Food)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Sun Spark Group" data-src="/banner/logo/sun-spark-group.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Sunrun&lt;br/&gt;(Energy)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Sunrun" data-src="/banner/logo/sunrun.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Teach a man to Fish&lt;br/&gt;(Technology)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Teach a man to Fish" data-src="/banner/logo/teach-a-man-to-fish.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Techniclim Inc&lt;br/&gt;(Construction)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Techniclim Inc" data-src="/banner/logo/techniclim-inc.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="The British University in Dubai&lt;br/&gt;(Colleges)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="The British University in Dubai" data-src="/banner/logo/the-british-university-in-dubai.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Universiti Teknologi Mara&lt;br/&gt;(Colleges)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Universiti Teknologi Mara" data-src="/banner/logo/universiti-teknologi-mara.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+                </div>
+            
+        
+            
+                <div class="row">
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Upaya Zen Center &lt;br/&gt;(Schools)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Upaya Zen Center " data-src="/banner/logo/upaya-zen-center-.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Wabash City Schools&lt;br/&gt;(School Districts)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Wabash City Schools" data-src="/banner/logo/wabash-city-schools.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+            
+                <div class="col-3">
+                    <a href="https://formfacade.com/website/#customers" data-toggle="tooltip" data-placement="right" data-html="true" title="" data-original-title="Zip Co Ltd&lt;br/&gt;(Technology)">
+                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNDAwIiB3aWR0aD0iNjQwIiBoZWlnaHQ9IjQwMCI+CgkJCTxyZWN0IHdpZHRoPSI2NDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjZjVmNWY1Ij48L3JlY3Q+ICAgCgkJCQoJCTwvc3ZnPg==" alt="Zip Co Ltd" data-src="/banner/logo/zip-co-ltd.png" fetchpriority="low" loading="lazy" class="lazyload img-fluid">
+                    </a>
+                </div>
+            
+        
+    </div>
+</div></section>
+
+
+
+    <section class="pt-100">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 col-md-10 ml-auto pb-70 mr-auto text-center">
+                    <h2 class="text-intro-large pb-30">
+                        Make Google Forms look great
+                    </h2>
+                    <div class="pb-30">
+                        <a href="https://gsuite.google.com/marketplace/app/formfacade/743872305260" class="btn btn-lg btn-radius btn-skin">
+                            Try It Free
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--/.container-->
+    </section>
+
+
+
+    
+    <!--footer start-->
+    <footer class="footer pt-4" style="min-height:250px; height:auto;">
+        <svg class="svg-footer z-index-0" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 1920 223" enable-background="new 0 0 1920 223" xml:space="preserve">
+            <polygon class="svg-white" opacity=".15" points="0,223 1920,223 1920,0 "></polygon>
+        </svg>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-3 margin-b-30 order-xs-3">
+                    <span class="wc-head pb-1">For existing customers</span>
+                    <span class="mb-3">
+                        <a class="btn btn-outline-light btn-radius btn-xs" href="https://formfacade.com/login/website.html">Login</a>
+                    </span>
+                    <span class="pt-3">
+                        <a class="text-white" href="https://formfacade.com/website/privacy.html">Privacy</a> |
+                        <a class="text-white" href="https://formfacade.com/website/tos.html">Terms of service</a>
+                    </span>
+                    <span class="pt-1">© 2023 Mailrecipe LLC</span>
+                </div>
+                
+                <div class="col-lg-3 pb-4">
+                    <div class="wc-head text-white text-muted pb-1">For Google Forms</div>
+                    
+                        <div class="pt-2">
+                            <a href="https://formfacade.com/embed/" class="text-white">Embed in website</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://formfacade.com/website/" class="text-white">Customize UI</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://formfacade.com/calculate/" class="text-white">Scorecery</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://formfacade.com/file-upload/" class="text-white">Petaform</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://formfacade.com/collaboration/" class="text-white">Mailrecipe</a>
+                        </div>
+                    
+                    
+                </div>
+                
+                <div class="col-lg-3 pb-4">
+                    <div class="wc-head text-white text-muted pb-1">For order forms</div>
+                    
+                        <div class="pt-2">
+                            <a href="https://neartail.com/order-form/" class="text-white">Form builder</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://neartail.com/whatsapp/" class="text-white">WhatsTarget</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://neartail.com/site-builder/" class="text-white">Site builder</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://neartail.com/google-order-forms/" class="text-white">Google Forms Addon</a>
+                        </div>
+                    
+                    
+                        <div class="wc-head text-white text-muted pt-4">Templates</div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/order-forms/grocery.html" class="text-white">
+                                Grocery forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/order-forms/restaurant.html" class="text-white">
+                                Restaurant forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/order-forms/bakery.html" class="text-white">
+                                Bakery forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/order-forms/clothing.html" class="text-white">
+                                Clothing forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/order-forms/miscellaneous.html" class="text-white">
+                                Miscellaneous forms
+                            </a>
+                        </div>
+                        
+                    
+                </div>
+                
+                <div class="col-lg-3 pb-4">
+                    <div class="wc-head text-white text-muted pb-1">For payment forms</div>
+                    
+                        <div class="pt-2">
+                            <a href="https://neartail.com/payment/" class="text-white">Peergateway</a>
+                        </div>
+                    
+                        <div class="pt-2">
+                            <a href="https://neartail.com/google-forms-payment/" class="text-white">Peergateway Addon</a>
+                        </div>
+                    
+                    
+                        <div class="wc-head text-white text-muted pt-4">Templates</div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/payment-forms/registration.html" class="text-white">
+                                Registration forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/payment-forms/booking.html" class="text-white">
+                                Booking forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/payment-forms/membership.html" class="text-white">
+                                Membership forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/payment-forms/application.html" class="text-white">
+                                Application forms
+                            </a>
+                        </div>
+                        
+                        <div class="pt-2">
+                            <a href="https://neartail.com/payment-forms/fundraising.html" class="text-white">
+                                Fundraising forms
+                            </a>
+                        </div>
+                        
+                    
+                </div>
+                
+                <!--
+                <a rel="me" href="https://sfba.social/@manidoraisamy">Mastodon</a>
+                <div class="col-lg-3 pb-4">
+                    <div class="wc-head text-white text-muted pb-1">For Developers</div>
+                    <div class="pt-2">
+                        <a href="https://formfacade.com/firefast/" class="text-white">Firefast</a>
+                    </div>
+                    <div class="pt-2">
+                        <a href="https://www.commercedna.com" class="text-white">CommerceDNA</a>
+                    </div>
+                </div>
+                -->
+            </div>
+            <!--row-->
+        </div>
+        <!--container-->
+    </footer>
+    <!--footer end-->
+
+    <!--back to top-->
+    <a href="https://formfacade.com/website/#" class="scrollToTop"><i class="icon ion-ios-arrow-up"></i></a>
+    <!--back to top end-->
+
+    <!--compile plugins-->
+    <script defer="" src="./Formfacade - Customize Google Forms UI_files/plugins.js.download"></script>
+    <script defer="" src="./Formfacade - Customize Google Forms UI_files/dosis.custom.js.download"></script>
+    
+        <script defer="" async="" src="./Formfacade - Customize Google Forms UI_files/js"></script>
+    
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      var host = location.host;
+      var configId = 'G-QJMXF6DX05';
+      if(host.indexOf('hipaache') > -1){
+        configId = 'G-ELBR9GV27X';
+      } else if(host.indexOf('neartail') > -1 || host.indexOf('whatstarget') > -1 || host.indexOf('peergateway') > -1) {
+        configId = 'G-FC6YGZ6C7Z';
+      }
+      gtag('config', configId);
+
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            var string = msg.toLowerCase();
+            var substring = 'script error';
+            // ignore script error
+            if (string.indexOf(substring) == -1){
+                url = url && url.split('/').pop()
+                var value = [
+                    'URL: ' + url,
+                    'Line: ' + lineNo,
+                    'Column: ' + columnNo,
+                    'Error object: ' + JSON.stringify(error)
+                    ].join(' - ');
+
+                if (window.gtag) {
+                    window.gtag('event', 'exception', {
+                        description: msg,
+                        event_value: value
+                    });
+                }
+            }
+            return false;
+        };
+    </script>
+
+
+<script>
+    window.addEventListener("load", function(){
+        var knownList = [
+            "localhost", "neartail.com", "formfacade.com", 
+            "mailrecipe.com", "whatstarget.com", "peergateway.com",
+            "scorecery.com", "petaform.com"
+        ];
+
+        if(window.localStorage && document.referrer) {
+            var isFromKnownList = false;
+            for (var i = 0; i < knownList.length; i++) {
+                if(document.referrer.includes(knownList[i])) isFromKnownList = true;
+            }
+            if(!isFromKnownList) localStorage.setItem('domain', document.referrer)
+        }
+
+        function getUTMParams() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var utmSource = urlParams.get('utm_source') || '';
+            var utmMedium = urlParams.get('utm_medium') || '';
+            var utmCampaign = urlParams.get('utm_campaign') || '';
+            var utmTerm = urlParams.get('utm_term') || '';
+            var utmContent = urlParams.get('utm_content') || '';
+            
+            return { utmSource, utmMedium, utmCampaign, utmTerm, utmContent };
+        }
+
+        var utm = getUTMParams();
+        if(utm.utmSource) localStorage.setItem('utmSource', utm.utmSource)
+        if(utm.utmMedium) localStorage.setItem('utmMedium', utm.utmMedium)
+        if(utm.utmCampaign) localStorage.setItem('utmCampaign', utm.utmCampaign)
+        if(utm.utmTerm) localStorage.setItem('utmTerm', utm.utmTerm)
+        if(utm.utmContent) localStorage.setItem('utmContent', utm.utmContent)
+    });
+</script>
+
+
+
+</body></html>

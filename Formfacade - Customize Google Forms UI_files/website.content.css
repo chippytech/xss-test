@@ -1,0 +1,62 @@
+#wc-menu-grocery a{ border-left:solid 1px rgba(25, 18, 51, 0.75); padding-left:20px; }
+.wc-page{ min-height:65vh; }
+.wc-heading{
+	position: relative; margin-bottom: 0px; padding-bottom: 0.5rem;
+  text-transform: none; font-size: 1.75rem; font-weight: 800; letter-spacing: 1px;
+}
+.wc-heading:before {
+  position: absolute; content: ""; background-color: #e5e2f3; left: 50%; bottom: 0; width: 100px; height: 2px;
+  -moz-transform: translateX(-50%); -o-transform: translateX(-50%); -ms-transform: translateX(-50%); -webkit-transform: translateX(-50%); transform: translateX(-50%);
+}
+.text-intro-large, .wc-head{ font-family:"Poppins", sans-serif !important; }
+.wc-para{ font-family:"Roboto", sans-serif !important; font-weight:500 !important; letter-spacing:1px; }
+.wc-para:hover{ background-color:#5d33fb !important; }
+
+.wc-intro{ }
+.wc-intro .wc-intro-screen{   
+	position:absolute; width:100%; height:auto; 
+	top:0; bottom:0; left:0; border:0; cursor:default;
+}
+.wc-intro-image{ cursor:pointer; max-width:720px; margin:auto; }
+.wc-intro-image img{ border-radius:3px; }
+.wc-intro-image .material-icons{
+    position:absolute; color:#fff; font-size:84px;
+    top:calc(50% - 42px); left:calc(50% - 42px);
+}
+.wc-intro-image:hover img{ opacity:0.9; }
+.wc-intro-image:hover .material-icons{ color:#5d33fb; }
+.wc-intro-video{ }
+
+
+.wc-check{ color:green; }
+.wc-halfcheck{ color:orange; }
+.wc-cancel{ color:red; }
+
+.bg{ background-color:rgba(93, 51, 251, 0.05); border-top:1px solid #e5e2f3; border-bottom:1px solid #e5e2f3; }
+.v-pills-tab .nav-link{ position:relative; margin-top:10px; margin-bottom:10px; padding:10px 18px; font-size:16px; font-weight:300; color:#191233; }
+.v-pills-tab .nav-link.active{ color:#111; font-weight:500; background-color:transparent; }
+.v-pills-tabContent .tab-pane img{ margin-bottom:20px; filter:drop-shadow(2px 2px 2px #aaa); }
+
+#compared{ font-size:15px; border-top:2px solid #e5e2f3; border-bottom:2px solid #e5e2f3; }
+#compared thead tr th{ height:80px; vertical-align:middle; border-bottom:1px solid #e5e2f3; font-weight:500; letter-spacing:1px; }
+#compared tr th{ height:80px; font-weight:400; vertical-align:middle; border-top:1px solid #e5e2f3; }
+#compared td{ text-align:center; vertical-align:middle; border-top:1px solid #e5e2f3; }
+.dropdown-menu .dropdown-item.dropdown-subitem{ text-transform:initial; }
+
+#compared .comparewith{ text-align:center; }
+#compared .icon{ font-weight:300; }
+#compared tbody tr:nth-child(odd){ background-color:rgba(93, 51, 251, 0.025); }
+@media (max-width:980px) {
+	#compared tr th{ padding:2px; }
+	#compared tr td{ padding:2px; }
+}
+
+@media (min-width: 768px) {
+	.swiper-wrapper{ align-items:center; }
+	.text-intro-large{ font-size:2.5rem; }
+	.v-pills-tab .active::before{ content:url(/img/arrow_right.svg); z-index:200; position:absolute; right:-30px; top:-10px; }
+}
+
+@media (max-width: 768px) {
+	.compared{ word-break:break-word; }
+}
